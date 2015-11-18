@@ -18,14 +18,14 @@ def on_join(data):
     username = data['nick']
     mapid = data['map']
     join_room(mapid)
-    send(username + ' has entered the room.', room=mapid)
+    emit('joined',{'nick':data['nick']}, room=mapid)
 
 @socketio.on('leave')
 def on_leave(data):
     username = data['nick']
     mapid = data['map']
     leave_room(mapid)
-    send(nick + ' has left the room.', room=mapid)
+    emit('left',{'nick':data['nick']}, room=mapid)
 
 @socketio.on('move')
 def handle_user_move(data):

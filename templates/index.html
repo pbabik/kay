@@ -6,11 +6,13 @@
     <title></title>
     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
     <link rel="stylesheet" href="https://rawgit.com/Leaflet/Leaflet.label/master/dist/leaflet.label.css">
+    <link rel="stylesheet" href="https://rawgit.com/MohammadYounes/AlertifyJS/master/build/css/alertify.min.css">
     <link rel="stylesheet" href="./static/css/style.css">
     <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
     <script src="https://rawgit.com/Leaflet/Leaflet.label/master/dist/leaflet.label.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="https://rawgit.com/MohammadYounes/AlertifyJS/master/build/alertify.js"></script>
 </head>
 <body>
     <section id="form" data-bind="if: !mapLoaded()">
@@ -36,6 +38,7 @@
     </section>
 
     <section id="mapContainer" data-bind="if: mapLoaded">
+        <button class="btn btn-leave" data-bind="click: disconnect">Leave map</button>
         <div id="map"></div>
     </section>
 
@@ -116,6 +119,8 @@
         return (c);
     }
 
+var socket;
+
 function kayVModel() {
     var self = this;
 
@@ -143,6 +148,12 @@ function kayVModel() {
         self.markersLayer.addTo(self.map);
     }
 
+   self.disconnect = function() {
+       socket.emit('leave',{map:self.mapid(),nick:self.nick()});
+       self.map.remove();
+       self.mapLoaded(false);
+   }
+
    self.connect = function() {
 
         if(!self.mapid()) {
@@ -169,6 +180,19 @@ function kayVModel() {
     }
 
     self.onSocketConnected = function() {
+        socket.on('joined',function(msg){
+            alertify.notify(msg.nick+' has joined the map','success',5);
+            self.reportPosition();
+        })
+        socket.on('left',function(msg){
+            alertify.notify(msg.nick+' has left the map','error',5);
+            for(var key in self.markersLayer._layers) {
+                if(self.markersLayer._layers[key].nick == msg.nick) {
+                    self.markersLayer.removeLayer(key);
+                    break;
+                }
+            }
+        })
         socket.on('usermove',function(msg){
             //if user has moved, try to find his marker and move it
             var foundUsersMarker = false;
@@ -214,7 +238,7 @@ function kayVModel() {
     }
 
     self.locationOptions = {
-      enableHighAccuracy: false,
+      enableHighAccuracy: true,
       timeout: 5000,
       maximumAge: 0
     };
@@ -225,6 +249,10 @@ function kayVModel() {
 
     self.onLocationFound = function(evt) {
         self.sendMyLocation([evt.coords.longitude,evt.coords.latitude]);
+    }
+
+    self.reportPosition = function() {
+        navigator.geolocation.getCurrentPosition(self.onLocationFound,self.onLocationError,self.locationOptions);
     }
 }
 

@@ -36,6 +36,13 @@ button.btn {
     -webkit-tap-highlight-color: transparent;
 }
 
+.btn-leave {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    z-index: 1000;
+}
+
 
 label.lbl {
     color: #9e9e9e;
