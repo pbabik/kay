@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title></title>
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+    <link rel="stylesheet" href="https://rawgit.com/Leaflet/Leaflet.label/master/dist/leaflet.label.css">
+    <link rel="stylesheet" href="./static/css/style.css">
+    <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+    <script src="https://rawgit.com/Leaflet/Leaflet.label/master/dist/leaflet.label.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+</head>
+<body>
+    <section id="form" data-bind="if: !mapLoaded()">
+        <form id="settings">
+            <dl>
+                <dt>
+                    <label class="lbl" for="nick">Your Nickname:</label>
+                    <input id="nick" data-bind="value: nick" type="text">
+                </dt>
+                <dt>
+                    <label class="lbl" for="color">Your Color:</label>
+                    <input id="color" data-bind="value: color" type="text">
+                </dt>
+                <dt>
+                    <label class="lbl" for="mapid">Secret Code:</label>
+                    <input id="mapid" data-bind="value: mapid" type="text">
+                </dt>
+                <dt>
+                    <button type="button" class="btn" data-bind="click: connect">Go</button>
+                </dt>
+            </dl>
+        </form>
+    </section>
+
+    <section id="mapContainer" data-bind="if: mapLoaded">
+        <div id="map"></div>
+    </section>
+
+    <script type="text/javascript" charset="utf-8">
+
+    //Hack CircleMarker so labels can be displayed
+    //@url http://stackoverflow.com/questions/15543141/label-for-circle-marker-in-leaflet
+
+    L.CircleMarker.include({
+        bindLabel: function (content, options) {
+            if (!this.label || this.label.options !== options) {
+                this.label = new L.Label(options, this);
+            }
+
+            this.label.setContent(content);
+            this.labelNoHide = options && options.noHide;
+
+            if (!this._showLabelAdded) {
+                if (this.labelNoHide) {
+                    this
+                        .on('remove', this.hideLabel, this)
+                        .on('move', this._moveLabel, this);
+                    this._showLabel({latlng: this.getLatLng()});
+                } else {
+                    this
+                        .on('mouseover', this._showLabel, this)
+                        .on('mousemove', this._moveLabel, this)
+                        .on('mouseout remove', this._hideLabel, this);
+                    if (L.Browser.touch) {
+                        this.on('click', this._showLabel, this);
+                    }
+                }
+                this._showLabelAdded = true;
+            }
+
+            return this;
+        },
+
+        unbindLabel: function () {
+            if (this.label) {
+                this._hideLabel();
+                this.label = null;
+                this._showLabelAdded = false;
+                if (this._labelNoHide) {
+                    this
+                        .off('remove', this._hideLabel, this)
+                        .off('move', this._moveLabel, this);
+                } else {
+                    this
+                        .off('mouseover', this._showLabel, this)
+                        .off('mousemove', this._moveLabel, this)
+                        .off('mouseout remove', this._hideLabel, this);
+                }
+            }
+            return this;
+        }
+    });
+
+    //Generate random color for markers
+    function rainbow(numOfSteps, step) {
+        // This function generates vibrant, "evenly spaced" colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.
+        // Adam Cole, 2011-Sept-14
+        // HSV to RBG adapted from: http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript
+        var r, g, b;
+        var h = step / numOfSteps;
+        var i = ~~(h * 6);
+        var f = h * 6 - i;
+        var q = 1 - f;
+        switch(i % 6){
+            case 0: r = 1; g = f; b = 0; break;
+            case 1: r = q; g = 1; b = 0; break;
+            case 2: r = 0; g = 1; b = f; break;
+            case 3: r = 0; g = q; b = 1; break;
+            case 4: r = f; g = 0; b = 1; break;
+            case 5: r = 1; g = 0; b = q; break;
+        }
+        var c = "#" + ("00" + (~ ~(r * 255)).toString(16)).slice(-2) + ("00" + (~ ~(g * 255)).toString(16)).slice(-2) + ("00" + (~ ~(b * 255)).toString(16)).slice(-2);
+        return (c);
+    }
+
+function kayVModel() {
+    var self = this;
+
+    //property to control maps visibility
+    self.mapLoaded = ko.observable(false);
+    //check if any of settings are present in localStorage
+    //and restore them if found
+    self.mapid = ko.observable(localStorage.getItem('lastMap')); //Map ID, aka Secret Code, aka room name
+    self.nick = ko.observable(localStorage.getItem('lastNick')); //Color of the user's marker
+    var markerColor = localStorage.getItem('lastColor');
+    if(!markerColor) {
+        markerColor = rainbow();
+    }
+    self.color = ko.observable(markerColor); //User's nickname
+    self.map = null;
+    self.markersLayer = null;
+
+    self.createMap = function() {
+        self.map = L.map('map');
+        L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+            maxZoom: 18
+        }).addTo(self.map);
+        self.markersLayer = L.featureGroup();
+        self.markersLayer.addTo(self.map);
+    }
+
+   self.connect = function() {
+
+        if(!self.mapid()) {
+            alert('Secret Code must not be empty!');
+            return false;
+        }
+        if(!self.nick()) {
+            alert('Nick must not be empty!');
+            return false;
+        }
+        localStorage.setItem('lastNick',self.nick());
+        localStorage.setItem('lastColor',self.color());
+        localStorage.setItem('lastMap',self.mapid());
+
+        self.mapLoaded(true);
+        self.createMap();
+        //connect to WebSocket
+        socket = io.connect('ws://' + document.domain + ':' + location.port);
+        //and join the map
+        socket.on('connect', function() {
+            socket.emit('join',{map:self.mapid(),nick:self.nick()});
+            self.onSocketConnected();
+        });
+    }
+
+    self.onSocketConnected = function() {
+        socket.on('usermove',function(msg){
+            //if user has moved, try to find his marker and move it
+            var foundUsersMarker = false;
+
+            for(var key in self.markersLayer._layers) {
+                if(self.markersLayer._layers[key].nick == msg.nick) {
+                    self.markersLayer._layers[key].setLatLng([msg.y,msg.x]);
+                    foundUsersMarker = true;
+                    break;
+                }
+            }
+            //if marker was not found, create it
+            if(!foundUsersMarker) {
+                var newUsersMarker = L.circleMarker([msg.y,msg.x],{
+                    fillColor: msg.color,
+                    color: msg.color,
+                    fillOpacity: 0.6,
+                    radius:16
+                })
+                //hack again: map must be bound to marker for label to show
+                newUsersMarker._map = self.map;
+                newUsersMarker.nick = msg.nick;
+                newUsersMarker.addTo(self.markersLayer);
+                newUsersMarker.bindLabel(msg.nick,{noHide:true});
+            }
+            self.map.fitBounds(self.markersLayer.getBounds());
+        })
+        self.posWatch = navigator.geolocation.watchPosition(self.onLocationFound, self.onLocationError, self.locationOptions);
+    }
+
+    self.sendMyLocation = function(pos) {
+        socket.emit('move',{
+            nick: self.nick(),
+            map: self.mapid(),
+            color: self.color(),
+            x: pos[0],
+            y: pos[1]
+        })
+    }
+
+     self.leaveMap = function() {
+        socket.emit('leave',{map:self.mapid(), nick: self.nick()});
+    }
+
+    self.locationOptions = {
+      enableHighAccuracy: false,
+      timeout: 5000,
+      maximumAge: 0
+    };
+
+     self.onLocationError = function(evt) {
+
+     }
+
+    self.onLocationFound = function(evt) {
+        self.sendMyLocation([evt.coords.longitude,evt.coords.latitude]);
+    }
+}
+
+var vm = new kayVModel();
+ko.applyBindings(vm);
+
+
+
+</script>
+</body>
+</html>
