@@ -40,6 +40,9 @@
     <section id="mapContainer" data-bind="if: mapLoaded">
         <button class="btn btn-leave" data-bind="click: disconnect">Leave map</button>
         <div id="map"></div>
+        <div id="chat">
+            <input type="text" data-bind="value: chatMessage">
+            <button class="btn" data-bind="click: sendMessage">Go</button>
     </section>
 
     <script type="text/javascript" charset="utf-8">
@@ -98,31 +101,16 @@
     });
 
     //Generate random color for markers
-    function rainbow(numOfSteps, step) {
-        // This function generates vibrant, "evenly spaced" colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.
-        // Adam Cole, 2011-Sept-14
-        // HSV to RBG adapted from: http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript
-        var r, g, b;
-        var h = step / numOfSteps;
-        var i = ~~(h * 6);
-        var f = h * 6 - i;
-        var q = 1 - f;
-        switch(i % 6){
-            case 0: r = 1; g = f; b = 0; break;
-            case 1: r = q; g = 1; b = 0; break;
-            case 2: r = 0; g = 1; b = f; break;
-            case 3: r = 0; g = q; b = 1; break;
-            case 4: r = f; g = 0; b = 1; break;
-            case 5: r = 1; g = 0; b = q; break;
-        }
-        var c = "#" + ("00" + (~ ~(r * 255)).toString(16)).slice(-2) + ("00" + (~ ~(g * 255)).toString(16)).slice(-2) + ("00" + (~ ~(b * 255)).toString(16)).slice(-2);
-        return (c);
+    function rainbow() {
+        return '#'+Math.floor(Math.random()*16777215).toString(16);
     }
 
 var socket;
 
 function kayVModel() {
     var self = this;
+
+    self.socket = null;
 
     //property to control maps visibility
     self.mapLoaded = ko.observable(false);
@@ -172,6 +160,7 @@ function kayVModel() {
         self.createMap();
         //connect to WebSocket
         socket = io.connect('ws://' + document.domain + ':' + location.port);
+        self.socket = socket;
         //and join the map
         socket.on('connect', function() {
             socket.emit('join',{map:self.mapid(),nick:self.nick()});
@@ -182,8 +171,17 @@ function kayVModel() {
     self.onSocketConnected = function() {
         socket.on('joined',function(msg){
             alertify.notify(msg.nick+' has joined the map','success',5);
+        })
+
+        socket.on('chat',function(msg){
+            console.log(msg);
+            alertify.notify(msg.nick+':'+msg.msg,'warning',5);
+        })
+
+        socket.on('ping',function(msg){
             self.reportPosition();
         })
+
         socket.on('left',function(msg){
             alertify.notify(msg.nick+' has left the map','error',5);
             for(var key in self.markersLayer._layers) {
@@ -200,6 +198,7 @@ function kayVModel() {
             for(var key in self.markersLayer._layers) {
                 if(self.markersLayer._layers[key].nick == msg.nick) {
                     self.markersLayer._layers[key].setLatLng([msg.y,msg.x]);
+                    self.markersLayer._layers[key].label.setLatLng([msg.y,msg.x]);
                     foundUsersMarker = true;
                     break;
                 }
@@ -221,6 +220,10 @@ function kayVModel() {
             self.map.fitBounds(self.markersLayer.getBounds());
         })
         self.posWatch = navigator.geolocation.watchPosition(self.onLocationFound, self.onLocationError, self.locationOptions);
+
+        setTimeout(function(){
+            socket.emit('ping_request',{map:self.mapid()});
+        },5000);
     }
 
     self.sendMyLocation = function(pos) {
@@ -253,6 +256,13 @@ function kayVModel() {
 
     self.reportPosition = function() {
         navigator.geolocation.getCurrentPosition(self.onLocationFound,self.onLocationError,self.locationOptions);
+    }
+
+    self.chatMessage = ko.observable();
+
+    self.sendMessage = function() {
+        socket.emit('send_chat',{nick: self.nick(), map: self.mapid(), msg: self.chatMessage()});
+        self.chatMessage('');
     }
 }
 

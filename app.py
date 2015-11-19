@@ -27,6 +27,14 @@ def on_leave(data):
     leave_room(mapid)
     emit('left',{'nick':data['nick']}, room=mapid)
 
+@socketio.on('ping_request')
+def on_ping(data):
+    emit('ping',room=data['map'])
+
+@socketio.on('send_chat')
+def on_chat(data):
+    emit('chat',{'nick':data['nick'],'msg':data['msg']},room=data['map'])
+
 @socketio.on('move')
 def handle_user_move(data):
     x = data['x']

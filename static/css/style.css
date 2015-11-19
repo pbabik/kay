@@ -1,8 +1,12 @@
-body,html,#mapContainer, #map {
+body,html,#mapContainer {
     height: 100%;
     width: 100%;
     padding:0px;
     margin:0px;
+}
+
+#map {
+    height: calc(100% - 65px);
 }
 
 input[type=text] {
@@ -12,7 +16,7 @@ input[type=text] {
     border-radius: 0;
     outline: none;
     height: 3rem;
-    width: 100%;
+    width: 50%;
     font-size: 1rem;
     margin: 0 0 15px 0;
     padding: 0;
