@@ -44,6 +44,23 @@ def handle_user_move(data):
     mapid = data['map']
     emit('usermove',{'x':x,'y':y,'nick':nick,'color':color},room=mapid)
 
+@socketio.on('lost_gps')
+def handle_user_lost(data):
+    nick = data['nick']
+    mapid = data['map']
+    emit('userlost',{'nick':nick},room=mapid)
+
+@socketio.on('pause')
+def handle_user_pause(data):
+    nick = data['nick']
+    mapid = data['map']
+    emit('userpaused',{'nick':nick},room=mapid)
+
+@socketio.on('play')
+def handle_user_play(data):
+    nick = data['nick']
+    mapid = data['map']
+    emit('userplayed',{'nick':nick},room=mapid)
 
 if __name__ == '__main__':
     socketio.run(app)

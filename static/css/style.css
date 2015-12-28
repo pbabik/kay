@@ -40,6 +40,19 @@ button.btn {
     -webkit-tap-highlight-color: transparent;
 }
 
+button.btn-xs {
+    padding: 0.05em;
+    font-size: 1em;
+    width: 28px;
+}
+
+#player {
+    position: absolute;
+    z-index: 1501;
+    left: 10px;
+    top: 75px;
+}
+
 .btn-leave {
     position: absolute;
     right: 15px;
@@ -47,6 +60,9 @@ button.btn {
     z-index: 1000;
 }
 
+.alertify-notifier {
+    font-family: "Roboto", sans-serif;
+}
 
 label.lbl {
     color: #9e9e9e;

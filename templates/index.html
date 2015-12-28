@@ -39,10 +39,15 @@
 
     <section id="mapContainer" data-bind="if: mapLoaded">
         <button class="btn btn-leave" data-bind="click: disconnect">Leave map</button>
+        <div id="player">
+            <button class="btn btn-xs" data-bind="click: pause, visible: !paused()">&#9616;&nbsp;&#9612;</button>
+            <button class="btn btn-xs" data-bind="click: play, visible: paused">&#9654;</button>
+        </div>
         <div id="map"></div>
         <div id="chat">
-            <input type="text" data-bind="value: chatMessage">
+            <input type="text" data-bind="value: chatMessage" placeholder="Say something...">
             <button class="btn" data-bind="click: sendMessage">Go</button>
+        </div>
     </section>
 
     <script type="text/javascript" charset="utf-8">
@@ -129,7 +134,7 @@ function kayVModel() {
     self.createMap = function() {
         self.map = L.map('map');
         L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+            attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a></a>',
             maxZoom: 18
         }).addTo(self.map);
         self.markersLayer = L.featureGroup();
@@ -170,11 +175,13 @@ function kayVModel() {
 
     self.onSocketConnected = function() {
         socket.on('joined',function(msg){
+            if(msg.nick == self.nick()) {
+                return;
+            }
             alertify.notify(msg.nick+' has joined the map','success',5);
         })
 
         socket.on('chat',function(msg){
-            console.log(msg);
             alertify.notify(msg.nick+':'+msg.msg,'warning',5);
         })
 
@@ -182,7 +189,31 @@ function kayVModel() {
             self.reportPosition();
         })
 
+        socket.on('userlost', function(msg){
+            if(msg.nick == self.nick()) {
+                return;
+            }
+            alertify.notify(msg.nick+' has lost GPS signal','warning',5);
+        })
+
+        socket.on('userpaused', function(msg){
+            if(msg.nick == self.nick()) {
+                return;
+            }
+            alertify.notify(msg.nick+' has paused','warning',5);
+        })
+
+        socket.on('userplayed', function(msg){
+            if(msg.nick == self.nick()) {
+                return;
+            }
+            alertify.notify(msg.nick+' has restarted','success',5);
+        })
+
         socket.on('left',function(msg){
+            if(msg.nick == self.nick()) {
+                return;
+            }
             alertify.notify(msg.nick+' has left the map','error',5);
             for(var key in self.markersLayer._layers) {
                 if(self.markersLayer._layers[key].nick == msg.nick) {
@@ -221,9 +252,30 @@ function kayVModel() {
         })
         self.posWatch = navigator.geolocation.watchPosition(self.onLocationFound, self.onLocationError, self.locationOptions);
 
+
         setTimeout(function(){
             socket.emit('ping_request',{map:self.mapid()});
         },5000);
+    }
+
+    self.paused = ko.observable(false);
+
+    self.pause = function() {
+        navigator.geolocation.clearWatch(self.posWatch);
+        self.paused(true);
+        socket.emit('pause',{
+            nick: self.nick(),
+            map: self.mapid()
+        })
+    }
+
+    self.play = function() {
+        self.posWatch = navigator.geolocation.watchPosition(self.onLocationFound, self.onLocationError, self.locationOptions);
+        self.paused(false);
+        socket.emit('play',{
+            nick: self.nick(),
+            map: self.mapid()
+        })
     }
 
     self.sendMyLocation = function(pos) {
@@ -243,14 +295,19 @@ function kayVModel() {
     self.locationOptions = {
       enableHighAccuracy: true,
       timeout: 5000,
-      maximumAge: 0
+      maximumAge: 4999
     };
 
      self.onLocationError = function(evt) {
-
+         console.log(evt);
+         socket.emit('lost_gps',{nick: self.nick(), map: self.mapid()})
      }
 
     self.onLocationFound = function(evt) {
+        if(evt.accuracy > 100) {
+            self.onLocationError();
+            return;
+        }
         self.sendMyLocation([evt.coords.longitude,evt.coords.latitude]);
     }
 
@@ -268,8 +325,6 @@ function kayVModel() {
 
 var vm = new kayVModel();
 ko.applyBindings(vm);
-
-
 
 </script>
 </body>
