@@ -24,7 +24,7 @@
                 </dt>
                 <dt>
                     <label class="lbl" for="color">Your Color:</label>
-                    <input id="color" data-bind="value: color" type="text">
+                    <input id="color" data-bind="value: color" type="color">
                 </dt>
                 <dt>
                     <label class="lbl" for="mapid">Secret Code:</label>
@@ -42,6 +42,7 @@
         <div id="player">
             <button class="btn btn-xs" data-bind="click: pause, visible: !paused()">&#9616;&nbsp;&#9612;</button>
             <button class="btn btn-xs" data-bind="click: play, visible: paused">&#9654;</button>
+            <button class="btn btn-xs" data-bind="click: toggleBind">B</button>
         </div>
         <div id="map"></div>
         <div id="chat">
@@ -130,6 +131,12 @@ function kayVModel() {
     self.color = ko.observable(markerColor); //User's nickname
     self.map = null;
     self.markersLayer = null;
+
+    self.bound = ko.observable(true);
+
+    self.toggleBind = function() {
+        self.bound(!self.bound());
+    }
 
     self.createMap = function() {
         self.map = L.map('map');
@@ -248,7 +255,9 @@ function kayVModel() {
                 newUsersMarker.addTo(self.markersLayer);
                 newUsersMarker.bindLabel(msg.nick,{noHide:true});
             }
-            self.map.fitBounds(self.markersLayer.getBounds());
+            if(self.bound()) {
+                self.map.fitBounds(self.markersLayer.getBounds());
+            }
         })
         self.posWatch = navigator.geolocation.watchPosition(self.onLocationFound, self.onLocationError, self.locationOptions);
 
