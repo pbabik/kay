@@ -34,7 +34,7 @@ button.btn {
     line-height: 36px;
     outline: 0;
     padding: 0 2rem;
-    background-color: #2196F3 !important;
+    background-color: #2196F3;
     text-transform: uppercase;
     vertical-align: middle;
     -webkit-tap-highlight-color: transparent;
@@ -69,4 +69,8 @@ label.lbl {
     font-size: 1rem;
     font-family: "Roboto", sans-serif;
     cursor: text;
+}
+
+.btnUnbound {
+    background-color: #AAAAAA !important;
 }
