@@ -12,11 +12,14 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/leaflet/0.7.7/leaflet.css" />
     <link rel="stylesheet" href="https://rawgit.com/Leaflet/Leaflet.label/master/dist/leaflet.label.css">
     <link rel="stylesheet" href="https://rawgit.com/MohammadYounes/AlertifyJS/master/build/css/alertify.min.css">
-    <link rel="stylesheet" href="./static/css/style.css?v=2">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="./static/css/style.css?v=3">
     <script src="https://cdn.jsdelivr.net/leaflet/0.7.7/leaflet.js"></script>
     <script src="https://rawgit.com/Leaflet/Leaflet.label/master/dist/leaflet.label.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="https://code.jquery.com/jquery-2.2.2.min.js"></script>
+    <script src="https://malsup.github.com/jquery.form.js"></script>
     <script src="https://rawgit.com/MohammadYounes/AlertifyJS/master/build/alertify.js"></script>
 </head>
 <body>
@@ -47,12 +50,28 @@
         <div id="player">
             <button class="btn btn-xs" data-bind="click: pause, visible: !paused()">&#9616;&nbsp;&#9612;</button>
             <button class="btn btn-xs" data-bind="click: play, visible: paused">&#9654;</button>
-            <button class="btn btn-xs" data-bind="click: toggleBind, css: {btnUnbound: !bound()}">B</button>
+            <button class="btn btn-xs" data-bind="click: toggleBind, css: {btnUnbound: !bound()}">
+                <i class="fa fa-unlink" data-bind="visible: bound()"></i>
+                <i class="fa fa-link" data-bind="visible: !bound()"></i>
+            </button>
         </div>
         <div id="map"></div>
         <div id="chat">
             <input type="text" data-bind="value: chatMessage" placeholder="Say something...">
-            <button class="btn" data-bind="click: sendMessage">Go</button>
+            <form class="inline" id="fotoform" method="post" action="./upload">
+                <div class="inputWrapper" data-bind="visible: !isLoading()">
+                    <i class="fa fa-lg fa-camera-retro"></i>
+                    <input class="fileInput" type="file" accept="image/*" id="file" name="file" capture="camera">
+                </div>
+            </form>
+            <div id="loading" data-bind="visible: isLoading">
+                <i class="fa fa-lg fa-spin fa-spinner"></i>
+            </div>
+            <button class="btn" data-bind="click: sendMessage"><i class="fa fa-arrow-right"></i></button>
+        </div>
+        <div id="bigfoto" data-bind="visible: bigFotoUrl()">
+            <img src="" data-bind="attr: {src: bigFotoUrl}">
+            <div class="closer"><a href="#" data-bind="click: hideBigFoto"><i class="fa fa-close"></i></a></div>
         </div>
     </section>
 
@@ -116,7 +135,9 @@
         return '#'+Math.floor(Math.random()*16777215).toString(16);
     }
 
-var socket;
+var socket, vm;
+
+$('#fotoform').ajaxForm();
 
 function kayVModel() {
     var self = this;
@@ -143,21 +164,30 @@ function kayVModel() {
         self.bound(!self.bound());
     }
 
+    self.bigFotoUrl = ko.observable();
+    self.hideBigFoto = function() {
+        self.bigFotoUrl(null);
+    }
+
     self.createMap = function() {
         self.map = L.map('map');
-        L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a></a>',
             maxZoom: 18
         }).addTo(self.map);
         self.markersLayer = L.featureGroup();
         self.markersLayer.addTo(self.map);
+        document.getElementById('file').onchange = self.postPhoto;
     }
 
    self.disconnect = function() {
        socket.emit('leave',{map:self.mapid(),nick:self.nick()});
        self.map.remove();
        self.mapLoaded(false);
+       return true;
    }
+
+   window.onunload = self.disconnect;
 
    self.connect = function() {
 
@@ -176,7 +206,7 @@ function kayVModel() {
         self.mapLoaded(true);
         self.createMap();
         //connect to WebSocket
-        socket = io.connect('wss://' + document.domain + ':' + location.port);
+        socket = io.connect('ws://' + document.domain + ':' + location.port);
         self.socket = socket;
         //and join the map
         socket.on('connect', function() {
@@ -270,6 +300,10 @@ function kayVModel() {
         setTimeout(function(){
             socket.emit('ping_request',{map:self.mapid()});
         },5000);
+
+        socket.on('photo',function(msg){
+            alertify.notify(msg.nick+'<a href="#" onclick="vm.bigFotoUrl(\'./filez/'+msg.file+'\')"><img src="./filez/'+msg.file+'?thumb=1"></a>','warning','15');
+        })
     }
 
     self.paused = ko.observable(false);
@@ -326,7 +360,7 @@ function kayVModel() {
     }
 
     self.reportPosition = function() {
-        navigator.geolocation.getCurrentPosition(self.onLocationFound,self.onLocationError,self.locationOptions);
+        navigator.geolocation.getCurrentPosition(self.onLocationFound,self.onLocationError,{});
     }
 
     self.chatMessage = ko.observable();
@@ -335,9 +369,20 @@ function kayVModel() {
         socket.emit('send_chat',{nick: self.nick(), map: self.mapid(), msg: self.chatMessage()});
         self.chatMessage('');
     }
+
+    self.isLoading = ko.observable(false);
+
+    self.postPhoto = function() {
+        console.log('BING');
+        self.isLoading(true);
+        $('#fotoform').ajaxSubmit(function(data){
+            self.isLoading(false);
+            socket.emit('send_photo',{nick: self.nick(), map: self.mapid(), file: data.uploaded});
+        })
+    }
 }
 
-var vm = new kayVModel();
+vm = new kayVModel();
 ko.applyBindings(vm);
 
 </script>
