@@ -206,7 +206,7 @@ function kayVModel() {
         self.mapLoaded(true);
         self.createMap();
         //connect to WebSocket
-        socket = io.connect('ws://' + document.domain + ':' + location.port);
+        socket = io.connect('wss://' + document.domain + ':' + location.port);
         self.socket = socket;
         //and join the map
         socket.on('connect', function() {
