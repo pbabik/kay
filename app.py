@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 
-from flask import Flask, render_template, request, abort, make_response, g
+from flask import Flask, render_template, request, abort, make_response, g, send_file
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 
 app = Flask(__name__)
@@ -12,6 +12,10 @@ socketio = SocketIO(app)
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_file('static/favicon.ico')
 
 @socketio.on('join')
 def on_join(data):
