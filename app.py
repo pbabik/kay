@@ -63,4 +63,4 @@ def handle_user_play(data):
     emit('userplayed',{'nick':nick},room=mapid)
 
 if __name__ == '__main__':
-    socketio.run(app)
+    socketio.run(app,host='0.0.0.0')
