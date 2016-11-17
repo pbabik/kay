@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="./static/css/leaflet.label.css">
     <link rel="stylesheet" href="https://rawgit.com/MohammadYounes/AlertifyJS/master/build/css/alertify.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="./static/css/style.css?v=3">
+    <link rel="stylesheet" href="./static/css/style.css?v=6">
     <script src="https://cdn.jsdelivr.net/leaflet/0.7.7/leaflet.js"></script>
     <script src="./static/l-label.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
@@ -47,6 +47,7 @@
 
     <section id="mapContainer" data-bind="if: mapLoaded">
         <button class="btn btn-leave" data-bind="click: disconnect">Leave map</button>
+        <a class="btn btn-xs btn-sms" data-bind="attr: {href: 'sms:?body='+location.href}">SMS</a>
         <div id="player">
             <button class="btn btn-xs" data-bind="click: pause, visible: !paused()">&#9616;&nbsp;&#9612;</button>
             <button class="btn btn-xs" data-bind="click: play, visible: paused">&#9654;</button>
@@ -149,6 +150,9 @@ function kayVModel() {
     //check if any of settings are present in localStorage
     //and restore them if found
     self.mapid = ko.observable(localStorage.getItem('lastMap')); //Map ID, aka Secret Code, aka room name
+    if(location.hash.length) {
+      self.mapid(location.hash.replace('#',''));
+    }
     self.nick = ko.observable(localStorage.getItem('lastNick')); //Color of the user's marker
     var markerColor = localStorage.getItem('lastColor');
     if(!markerColor) {
@@ -213,6 +217,9 @@ function kayVModel() {
             socket.emit('join',{map:self.mapid(),nick:self.nick()});
             self.onSocketConnected();
         });
+        if(!location.hash.length) {
+            location.hash = '#'+self.mapid();
+        }
     }
 
     self.onSocketConnected = function() {

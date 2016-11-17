@@ -25,7 +25,7 @@ input[type=text] {
     transition: all .3s;
 }
 
-button.btn {
+button.btn, a.btn {
     border: none;
     color: white;
     border-radius: 2px;
@@ -38,9 +38,10 @@ button.btn {
     text-transform: uppercase;
     vertical-align: middle;
     -webkit-tap-highlight-color: transparent;
+    text-decoration: none;
 }
 
-button.btn-xs {
+button.btn-xs, a.btn-xs {
     padding: 0.05em;
     font-size: 1em;
     width: 28px;
@@ -58,6 +59,15 @@ button.btn-xs {
     right: 15px;
     top: 15px;
     z-index: 1000;
+}
+
+.btn-sms {
+    position: absolute;
+    right: 160px;
+    top: 15px;
+    z-index: 1000;
+    font-family: sans-serif;
+    padding: 5px;
 }
 
 .alertify-notifier {
