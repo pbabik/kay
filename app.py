@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 import os
-from flask import Flask, render_template, request, abort, make_response, g, send_file, send_from_directory, jsonify
+from flask import Flask, url_for, redirect, render_template, request, abort, make_response, g, send_file, send_from_directory, jsonify
 from werkzeug import secure_filename
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from PIL import Image
@@ -48,6 +48,10 @@ def upload():
         return jsonify({"uploaded":filename})
     else:
         abort(400)
+
+@app.route('/map/<mapid>')
+def direct_link(mapid):
+    return redirect(url_for('index')+'#'+mapid)
 
 @socketio.on('join')
 def on_join(data):
