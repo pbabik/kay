@@ -47,7 +47,7 @@
 
     <section id="mapContainer" data-bind="if: mapLoaded">
         <button class="btn btn-leave" data-bind="click: disconnect">Leave map</button>
-        <a class="btn btn-xs btn-sms" data-bind="attr: {href: 'sms:?body='+location.origin+'/map/'+location.hash.replace('#','')}">SMS</a>
+        <a class="btn btn-xs btn-sms" data-bind="attr: {href: mapDirectLink}">SMS</a>
         <div id="player">
             <button class="btn btn-xs" data-bind="click: pause, visible: !paused()">&#9616;&nbsp;&#9612;</button>
             <button class="btn btn-xs" data-bind="click: play, visible: paused">&#9654;</button>
@@ -144,6 +144,7 @@ function kayVModel() {
     var self = this;
 
     self.socket = null;
+    self.mapDirectLink = ko.observable();
 
     //property to control maps visibility
     self.mapLoaded = ko.observable(false);
@@ -206,7 +207,7 @@ function kayVModel() {
         localStorage.setItem('lastNick',self.nick());
         localStorage.setItem('lastColor',self.color());
         localStorage.setItem('lastMap',self.mapid());
-
+     
         self.mapLoaded(true);
         self.createMap();
         //connect to WebSocket
@@ -220,6 +221,7 @@ function kayVModel() {
         if(!location.hash.length) {
             location.hash = '#'+self.mapid();
         }
+        self.mapDirectLink('sms:?body='+location.origin+'/map/'+location.hash.replace('#',''));
     }
 
     self.onSocketConnected = function() {
