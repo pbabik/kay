@@ -10,12 +10,12 @@
     <link rel="shortcut icon" sizes="80x80" href="./static/icon.png">
     <title>Kajhub</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/leaflet/0.7.7/leaflet.css" />
-    <link rel="stylesheet" href="https://rawgit.com/Leaflet/Leaflet.label/master/dist/leaflet.label.css">
+    <link rel="stylesheet" href="./static/css/leaflet.label.css">
     <link rel="stylesheet" href="https://rawgit.com/MohammadYounes/AlertifyJS/master/build/css/alertify.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="./static/css/style.css?v=3">
     <script src="https://cdn.jsdelivr.net/leaflet/0.7.7/leaflet.js"></script>
-    <script src="https://rawgit.com/Leaflet/Leaflet.label/master/dist/leaflet.label.js"></script>
+    <script src="./static/l-label.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-2.2.2.min.js"></script>
@@ -341,9 +341,7 @@ function kayVModel() {
     }
 
     self.locationOptions = {
-      enableHighAccuracy: true,
-      timeout: 5000,
-      maximumAge: 4999
+      enableHighAccuracy: true
     };
 
      self.onLocationError = function(evt) {
@@ -373,7 +371,6 @@ function kayVModel() {
     self.isLoading = ko.observable(false);
 
     self.postPhoto = function() {
-        console.log('BING');
         self.isLoading(true);
         $('#fotoform').ajaxSubmit(function(data){
             self.isLoading(false);
